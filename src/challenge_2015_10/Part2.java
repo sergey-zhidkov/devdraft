@@ -9,7 +9,8 @@ import java.io.InputStreamReader;
  */
 class LightRailApp {
 
-    private static final int MINUTES_IN_DAY = 24 * 60;
+    private static final int MINUTES_IN_HOUR = 60;
+    private static final int MINUTES_IN_DAY = 24 * MINUTES_IN_HOUR;
 
     /**
      * Converts a string in the format hh:mm (of a 24-hour clock)
@@ -19,7 +20,7 @@ class LightRailApp {
      */
     public static int toMinutes(final String hhmm) {
         final String parts[] = hhmm.split(":");
-        return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
+        return Integer.parseInt(parts[0]) * MINUTES_IN_HOUR + Integer.parseInt(parts[1]);
     }
 
     /**
@@ -122,9 +123,9 @@ class LightRailApp {
         this.intervalStarts = intervalStarts;
         this.intervalPeriods = intervalPeriods;
         this.northFirst = northFirst;
-        this.northLast = northLast;
+        this.northLast = northLast > northFirst ? northLast : northLast + MINUTES_IN_DAY;
         this.southFirst = southFirst;
-        this.southLast = northLast;
+        this.southLast = southLast > southFirst ? southLast : southLast + MINUTES_IN_DAY;
     }
 
     /**
@@ -160,9 +161,20 @@ class LightRailApp {
             }
         }
 
+
         // normalized leave time--when the rider would want to leave, if they were
         // at the first station
         int normLeave = leave - offset;
+        // if normLeave is after 23:59 time, add 24 hours to this value
+        if (north) {
+            if (normLeave < northFirst && normLeave <= (northLast - MINUTES_IN_DAY)) {
+                normLeave += MINUTES_IN_DAY;
+            }
+        } else {
+            if (normLeave < southFirst && normLeave <= (southLast - MINUTES_IN_DAY)) {
+                normLeave += MINUTES_IN_DAY;
+            }
+        }
 
         // if outside train operating hours, just return the first train.
         if (normLeave > last || normLeave < first) {
@@ -172,13 +184,29 @@ class LightRailApp {
         // when the desired train leaves the first station
         int trainLeave = first;
         int i = 0;
+        int curIntervalStarts = intervalStarts[i];
+        int nextIntervalStarts;
+        int curIntervalPeriod;
         while (trainLeave < normLeave) {
-            trainLeave += intervalPeriods[i];
-            if (i + 1 < intervalStarts.length && trainLeave >= intervalStarts[i + 1]) {
-                i++;
+            curIntervalPeriod = intervalPeriods[i];
+            trainLeave += curIntervalPeriod;
+            if (i + 1 < intervalStarts.length) {
+                nextIntervalStarts = intervalStarts[i + 1];
+                // add 24 hours, if next interval period starts after 23:59
+                nextIntervalStarts = curIntervalStarts < nextIntervalStarts ?
+                        nextIntervalStarts : nextIntervalStarts + MINUTES_IN_DAY;
+                if (trainLeave >= nextIntervalStarts) {
+                    i++;
+                    curIntervalStarts = nextIntervalStarts;
+                }
             }
         }
-        return trainLeave + offset;
+
+        int result = trainLeave + offset;
+        if (result > MINUTES_IN_DAY) {
+            result -= MINUTES_IN_DAY;
+        }
+        return result;
     }
 
 
