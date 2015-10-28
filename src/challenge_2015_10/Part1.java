@@ -3,11 +3,14 @@ package challenge_2015_10;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Part1 {
     private static final int MINUTES_IN_HOUR = 60;
     private static final String IMPOSSIBLE = "IMPOSSIBLE";
     private static int maxMinutesOpened;
+    private static int [][] queueTimeMatrix;
 
     public static void main(String [] args) throws IOException {
         // read from input
@@ -17,7 +20,7 @@ public class Part1 {
         int hoursOpenedCount = Integer.parseInt(dataToParse[1]); // 1 <= H <= 23
         maxMinutesOpened = hoursOpenedCount * MINUTES_IN_HOUR;
 
-        int [][] queueTimeMatrix = new int[attractionCount][];
+        queueTimeMatrix = new int[attractionCount][];
         parseQueueTime(br, queueTimeMatrix, hoursOpenedCount);
         int queriesCount = Integer.parseInt(br.readLine()); // 0 <= Q < 100
 
@@ -25,11 +28,11 @@ public class Part1 {
             int guestEnterTime = Integer.parseInt(br.readLine()); // T
             int desireVisitAttractionCount = Integer.parseInt(br.readLine()); // 0 <= D <= 20
             int [] desiredAttractions = stringArrToIntArray(br.readLine().split("\\s+"));
-            printLeastAmountOfTimeToVisitDesiredAttractions(queueTimeMatrix, guestEnterTime, desiredAttractions, hoursOpenedCount);
+            printLeastAmountOfTimeToVisitDesiredAttractions(guestEnterTime, desiredAttractions, hoursOpenedCount);
         }
     }
 
-    static void printLeastAmountOfTimeToVisitDesiredAttractions(int [][] queueTimeMatrix, int guestEnterTime, int [] desiredAttractions, int hoursOpenedCount) {
+    static void printLeastAmountOfTimeToVisitDesiredAttractions(int guestEnterTime, int [] desiredAttractions, int hoursOpenedCount) {
         if (guestEnterTime > maxMinutesOpened) {
             System.out.println(IMPOSSIBLE);
             return;
@@ -38,16 +41,67 @@ public class Part1 {
         int result;
         int desiredAttractionCount = desiredAttractions.length;
         if (desiredAttractionCount == 1) {
-            result = findLeastTimeInQueue(queueTimeMatrix, guestEnterTime, desiredAttractions[0]);
-            if (result + guestEnterTime > maxMinutesOpened) {
-                System.out.println(IMPOSSIBLE);
-                return;
+            result = findLeastTimeInQueue(guestEnterTime, desiredAttractions[0]);
+        } else {
+            result = findSmallestTimeWithAllPermutations(guestEnterTime, desiredAttractions);
+        }
+
+        if (result + guestEnterTime > maxMinutesOpened) {
+            System.out.println(IMPOSSIBLE);
+            return;
+        }
+        System.out.println(result);
+    }
+
+    static int findSmallestTimeWithAllPermutations(int guestEnterTime, int [] desiredAttractions) {
+        List<Integer> time = new ArrayList<Integer>();
+        permute(desiredAttractions, 0, time, guestEnterTime);
+        return getSmallest(time);
+    }
+
+    static int getSmallest(List<Integer> time) {
+        Integer smallest = time.get(0);
+        for (int i = 1; i < time.size(); i++) {
+            if (time.get(i) < smallest) {
+                smallest = time.get(i);
             }
-            System.out.println(result);
+        }
+        return smallest;
+    }
+
+    static void permute(int [] arr, int k, List<Integer> time, int guestEnterTime) {
+        for (int i = k; i < arr.length; i++) {
+            swap(arr, i, k);
+            permute(arr, k + 1, time, guestEnterTime);
+            swap(arr, k, i);
+        }
+        if (k == arr.length - 1) {
+            time.add(findTime(arr, guestEnterTime));
         }
     }
 
-    static int findLeastTimeInQueue(int [][] queueTimeMatrix, int guestEnterTime, int attractionIndex) {
+    static int findTime(int [] attractionsInOrder, int guestEnterTime) {
+        int startHourIndex = guestEnterTime / MINUTES_IN_HOUR;
+        int guestEnterTimeStartsFromStartHour = guestEnterTime % MINUTES_IN_HOUR;
+
+        int time = guestEnterTimeStartsFromStartHour;
+        int curHourIndex = startHourIndex;
+        for (int i = 0; i < attractionsInOrder.length; i++) {
+            int nextAttraction = attractionsInOrder[i];
+            int currQueueTime = queueTimeMatrix[nextAttraction][curHourIndex];
+            time += currQueueTime;
+            curHourIndex = startHourIndex + time / MINUTES_IN_HOUR;
+        }
+        return time;
+    }
+
+    static void swap(int [] arr, int ind1, int ind2) {
+        int temp = arr[ind1];
+        arr[ind1] = arr[ind2];
+        arr[ind2] = temp;
+    }
+
+    static int findLeastTimeInQueue(int guestEnterTime, int attractionIndex) {
         int [] hoursQueues = queueTimeMatrix[attractionIndex];
         int hoursOpenedCount = hoursQueues.length;
 
@@ -84,7 +138,7 @@ public class Part1 {
         return leastTimeInQueue;
     }
 
-    static void parseQueueTime(BufferedReader br, int [][] queueTimeMatrix, int hoursOpened) throws IOException {
+    static void parseQueueTime(BufferedReader br, int[][] queueTimeMatrix, int hoursOpened) throws IOException {
         int attractionCount = queueTimeMatrix.length;
         for (int i = 0; i < attractionCount; i++) {
             String [] queueTimeString = br.readLine().split("\\s+");
