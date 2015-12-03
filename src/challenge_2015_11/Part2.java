@@ -27,46 +27,52 @@ class CostCalculator
 
 class Address
 {
-    public String addressLine;
+    private final String addressLine;
+    private final String streetAddress;
+    private final String cityName;
+    private final String stateName;
 
-    public Address (String addressLine)
+    public Address (final String addressLine)
     {
         this.addressLine = addressLine;
+        String [] addressParts = addressLine.split(",");
+        int len = addressParts.length;
+        streetAddress = addressParts[0].trim();
+        cityName = addressParts[len - 2].trim();
+        stateName = addressParts[len - 1].trim().split(" ")[0];
     }
 
     public String getStreetAddress()
     {
-        //take everything before the first comma
-        return addressLine.split(",")[0].trim();
+        return streetAddress;
     }
 
     public String getCityName()
     {
-        //the city appears after the first comma
-        return addressLine.split(",")[1].trim();
+        return cityName;
     }
 
     public String getState()
     {
-        //state appears after 2 commas
-        String stateLine = addressLine.split(",")[2].trim();
-        return stateLine.split(" ")[0].trim();
+        return stateName;
     }
 
     public int getZipCode()
     {
+        String [] addressParts = addressLine.split(",");
+        String partWithZipCode = addressParts[addressParts.length - 1];
         int consecutiveDigits = 0;
 
         //search for something that matches 5 consecutive digits
-        for (int i=0; i<addressLine.length(); i++)
+        for (int i = 0; i < partWithZipCode.length(); i++)
         {
-            char c = addressLine.charAt(i);
+            char c = partWithZipCode.charAt(i);
             if (Character.isDigit(c))
             {
                 consecutiveDigits++;
                 if (consecutiveDigits == 5)
                 {
-                    return Integer.parseInt(addressLine.substring(i-4, i+1));
+                    return Integer.parseInt(partWithZipCode.substring(i-4, i+1));
                 }
             }
             else
@@ -82,25 +88,27 @@ class Address
 
 class TaxCalculator
 {
+    private static final int TAX_ARIZONA = 5;
+    private static final int TAX_WASHINGTON = 9;
+    private static final int TAX_CALIFORNIA = 6;
+    private static final int TAX_DELAWARE = 0;
+    private static final int TAX_OTHER = 7;
+
     public static int calculateTax(int orderAmount, String state)
     {
-        if (state.equals("Arizona"))
+        state = state.toLowerCase();
+        switch (state)
         {
-            return orderAmount / 100 * 5;
+            case "arizona":
+            case "az": return (orderAmount / 100) * TAX_ARIZONA;
+            case "washington":
+            case "wa": return (orderAmount / 100) * TAX_WASHINGTON;
+            case "california":
+            case "ca": return (orderAmount / 100) * TAX_CALIFORNIA;
+            case "delaware":
+            case "de": return TAX_DELAWARE;
         }
-        if (state.equals("Washington"))
-        {
-            return orderAmount / 100 * 9;
-        }
-        if (state.equals("California"))
-        {
-            return orderAmount / 100 * 6;
-        }
-        if (state.equals("Delaware"))
-        {
-            return 0;
-        }
-        return orderAmount / 100 * 7;
+        return (orderAmount / 100) * TAX_OTHER;
     }
 }
 
@@ -108,7 +116,7 @@ class ShippingCalculator
 {
     public static int calculateShipping(int zipCode)
     {
-        if (zipCode >= 75000)
+        if (zipCode > 75000)
         {
             return 10;
         }
